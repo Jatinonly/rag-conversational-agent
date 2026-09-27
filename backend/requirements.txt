@@ -4,3 +4,5 @@ python-multipart
 PyMuPDF
 sentence-transformers
 faiss-cpu
+transformers
+torch
