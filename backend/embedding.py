@@ -9,4 +9,3 @@ def create_embedding(text: str) -> list[float]:
     vector = model.encode(text)
 
     return vector.tolist()
-

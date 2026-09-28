@@ -1,24 +1,59 @@
+import re  # regular-expression module.
+
 
 def chunk_page(
     page_text: str,
     page_number: int,
+    file_name=str,
     chunk_size: int = 1000,
     overlap: int = 200,
 ) -> list[dict]:
     chunks = []
 
-    start = 0
+    sections = split_into_sections(page_text)
 
-    while start < len(page_text):
-        end = start + chunk_size
+    for section in sections:
+        start = 0
 
-        chunk = page_text[start:end]
+        while start < len(section):
+            end = start + chunk_size
 
-        chunks.append({
-            "text": chunk,
-            "page": page_number,
-        })
+            chunk = section[start:end]
 
-        start = end - overlap
+            chunks.append(
+                {
+                    "text": chunk,
+                    "page": page_number,
+                    "filename": file_name,
+                }
+            )
+
+            start = end - overlap
 
     return chunks
+
+
+def split_into_sections(text: str) -> list[str]:
+    matches = list(
+        re.finditer(
+            r"(?m)^\d+\.\s+.+$",
+            text,
+        )
+    )
+
+    sections = []
+
+    for i, match in enumerate(matches):
+        start = match.start()
+
+        if i + 1 < len(matches):
+            end = matches[i + 1].start()
+        else:
+            end = len(text)
+
+        section = text[start:end].strip()
+
+        if section:
+            sections.append(section)
+
+    return sections

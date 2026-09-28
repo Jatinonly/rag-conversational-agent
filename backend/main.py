@@ -7,6 +7,8 @@ from pydantic import BaseModel
 from pdf_parser import extract_pages_from_pdf
 from chunker import chunk_page
 from rag_retriever import RAGRetriever
+from prompt import build_rag_prompt
+from llm import generate_answer
 
 app = FastAPI()
 
@@ -56,6 +58,7 @@ async def upload_document(file: Annotated[UploadFile, File()]):
         page_chunks = chunk_page(
             page_text=page["text"],
             page_number=page["page"],
+            file_name=file.filename,
         )
         chunks.extend(page_chunks)
 
@@ -72,12 +75,32 @@ async def query_document(request: QueryRequest):
     if retriever is None:
         return {"error": "No document has been uploaded yet."}
 
-    results = retriever.search(
+    retrieved_chunks = retriever.search(
         query=request.question,
         top_k=3,
+        candidate_k=10,
+        max_distance=1.5,
     )
+
+    prompt = build_rag_prompt(
+        question=request.question,
+        retrieved_chunks=retrieved_chunks,
+    )
+
+    answer = generate_answer(prompt)
+
+    sources = [
+        {
+            "page": chunk["page"],
+            "text": chunk["text"],
+            "distance": chunk["distance"],
+            "filename": chunk["filename"],
+        }
+        for chunk in retrieved_chunks
+    ]
 
     return {
         "question": request.question,
-        "results": results,
+        "answer": answer,
+        "sources": sources,
     }

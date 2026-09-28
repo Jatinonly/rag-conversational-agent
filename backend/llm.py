@@ -19,14 +19,7 @@ def generate_answer(prompt: str) -> str:
     result = generator(
         messages,
         max_new_tokens=200,
+        do_sample=False,
     )
 
-    return result[0]["generated_text"]
-
-
-if __name__ == "__main__":
-    prompt = "Explain what a REST API is in simple terms."
-
-    answer = generate_answer(prompt)
-
-    print(answer)
+    return result[0]["generated_text"][-1]["content"]
