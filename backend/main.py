@@ -14,10 +14,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:5174",
-    ],
+    allow_origins=["http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,13 +23,14 @@ app.add_middleware(
 UPLOAD_DIR = Path("uploads")  # backend/uploads
 UPLOAD_DIR.mkdir(exist_ok=True)  # if uploads folder not present then create it.
 
-retriever = None
-
 
 class QueryRequest(
     BaseModel
 ):  # Request should have a field called question, and it should be a string.
     question: str
+
+
+retriever = None
 
 
 @app.get("/")
@@ -80,6 +78,7 @@ async def query_document(request: QueryRequest):
         top_k=3,
         candidate_k=10,
         max_distance=1.5,
+        rewrite=True,
     )
 
     prompt = build_rag_prompt(
@@ -94,6 +93,7 @@ async def query_document(request: QueryRequest):
             "page": chunk["page"],
             "text": chunk["text"],
             "distance": chunk["distance"],
+            "rerank_score": chunk["rerank_score"],
             "filename": chunk["filename"],
         }
         for chunk in retrieved_chunks

@@ -17,6 +17,7 @@ def create_index(embeddings: list[list[float]]):
     return index
 
 
+# semantic searching/retriever:
 def search_index(
     index,
     query_embedding: list[float],
