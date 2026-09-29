@@ -4,6 +4,8 @@ from sentence_transformers import CrossEncoder
 from query_rewriter import rewrite_query
 from multi_query import generate_queries
 from context_compressor import compress_context
+from bm25_retriever import BM25Retriever
+from rrf import reciprocal_rank_fusion
 
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
@@ -16,17 +18,22 @@ class RAGRetriever:
 
         embeddings = [create_embedding(chunk["text"]) for chunk in chunks]
 
+        # Semantic search
         self.index = create_index(embeddings)
+
+        # Lexical search
+        self.bm25 = BM25Retriever(chunks)
 
     def search(
         self,
         query: str,
         top_k: int = 3,
         candidate_k: int = 10,
-        max_distance: float | None = None,
         rewrite: bool = True,
         multi_query: bool = True,
     ) -> list[dict]:
+
+        # 1. Query transformation
 
         queries = [query]
 
@@ -36,40 +43,77 @@ class RAGRetriever:
         if multi_query:
             queries = generate_queries(queries[0])
 
-        queries = list(dict.fromkeys(queries))  # removes duplicate query from queries
+        queries = list(dict.fromkeys(queries))
 
-        unique_candidates = {}
+        # 2. Hybrid retrieval + RRF
 
-        for search_query in queries:  # finding candidates from multiple queries
+        # Store unique chunks across ALL generated queries.
+        # Key = chunk index
+        all_candidates = {}
+
+        for search_query in queries:
+
+            # ---------- FAISS ----------
             query_embedding = create_embedding(search_query)
 
-            distances, indices = search_index(
+            faiss_distances, faiss_indices = search_index(
                 self.index,
                 query_embedding,
                 candidate_k,
             )
 
-            for distance, index_position in zip(distances, indices):
-                if max_distance is not None and distance > max_distance:
-                    continue
+            faiss_indices = list(faiss_indices)
+
+            # ---------- BM25 ----------
+            bm25_indices = self.bm25.search(
+                query=search_query,
+                top_k=candidate_k,
+            )
+
+
+            # ---------- RRF ----------
+            hybrid_scores = reciprocal_rank_fusion(
+                [
+                    faiss_indices,
+                    bm25_indices,
+                ]
+            )
+
+            hybrid_ranked = sorted(
+                hybrid_scores.items(),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+
+            # ---------- Collect "UNIQUE" candidates ----------
+            for index_position, rrf_score in hybrid_ranked[:candidate_k]:
 
                 chunk = self.chunks[index_position]
 
-                if index_position not in unique_candidates:
-                    unique_candidates[index_position] = {
+                # First time we see this chunk
+                if index_position not in all_candidates:
+
+                    all_candidates[index_position] = {
                         "text": chunk["text"],
                         "page": chunk["page"],
                         "filename": chunk["filename"],
-                        "distance": float(distance),
+                        "rrf_score": float(rrf_score),
+                        "query_hits": 1, # Number of queries who gave this chunk as a candidate.
                     }
-                elif (
-                    distance < unique_candidates[index_position]["distance"]
-                ):  # Because say a query q1 can have distance 2 with the chunk and the other query q2 can have distance 1.5 with the same chunk, so we need the shorter distance because chunk is still the same.
-                    unique_candidates[index_position]["distance"] = float(distance)
 
-        candidates = list(unique_candidates.values())
+                # Same chunk found by another generated query.
+                # Keep the better RRF score.
+                else:
+                    all_candidates[index_position]["query_hits"] += 1
 
-        # From here starts the cross-encoder part:
+                    if rrf_score > all_candidates[index_position]["rrf_score"]:
+                        all_candidates[index_position]["rrf_score"] = float(rrf_score)
+
+        # Convert dictionary back into list
+        candidates = list(all_candidates.values())
+
+        # 3. Cross-encoder reranking
+
         pairs = [
             [query, candidate["text"]] for candidate in candidates
         ]  # we do not use multiple queries in cross-encoder because we only want to find best chunks using the users query only.
@@ -82,16 +126,23 @@ class RAGRetriever:
             reverse=True,
         )
 
+        # 4. Contextual compression
+
         results = []
 
         for score, candidate in ranked[:top_k]:
+
             results.append(
                 {
-                    "text": compress_context(question=query, text=candidate["text"]),  #compress the chunks text before sending results
+                    "text": compress_context(
+                        question=query,
+                        text=candidate["text"],
+                    ),
                     "page": candidate["page"],
                     "filename": candidate["filename"],
-                    "distance": candidate["distance"],
+                    "rrf_score": candidate["rrf_score"],
                     "rerank_score": float(score),
+                    "query_hits": candidate["query_hits"],
                 }
             )
 

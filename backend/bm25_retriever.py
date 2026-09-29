@@ -24,16 +24,4 @@ class BM25Retriever:
             reverse=True,
         )
 
-        results = []
-
-        for index in ranked_indices[:top_k]:
-            results.append(
-                {
-                    "text": self.chunks[index]["text"],
-                    "page": self.chunks[index]["page"],
-                    "filename": self.chunks[index]["filename"],
-                    "bm25_score": float(scores[index]),
-                }
-            )
-
-        return results
+        return ranked_indices[:top_k]

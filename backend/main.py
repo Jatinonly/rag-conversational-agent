@@ -77,8 +77,8 @@ async def query_document(request: QueryRequest):
         query=request.question,
         top_k=3,
         candidate_k=10,
-        max_distance=1.5,
         rewrite=True,
+        multi_query=True,
     )
 
     prompt = build_rag_prompt(
@@ -92,9 +92,8 @@ async def query_document(request: QueryRequest):
         {
             "page": chunk["page"],
             "text": chunk["text"],
-            "distance": chunk["distance"],
-            "rerank_score": chunk["rerank_score"],
             "filename": chunk["filename"],
+            "rerank_score": chunk["rerank_score"],
         }
         for chunk in retrieved_chunks
     ]
