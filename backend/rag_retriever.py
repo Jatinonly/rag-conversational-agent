@@ -1,3 +1,5 @@
+import numpy as np
+
 from embedding import create_embedding
 from vector_store import create_index, search_index
 from sentence_transformers import CrossEncoder
@@ -18,11 +20,48 @@ class RAGRetriever:
 
         embeddings = [create_embedding(chunk["text"]) for chunk in chunks]
 
-        # Semantic search
+        # Semantic search - FAISS
         self.index = create_index(embeddings)
 
-        # Lexical search
-        self.bm25 = BM25Retriever(chunks)
+        # Lexical search - BM25
+        self.bm25 = BM25Retriever(list(chunks))
+
+    def add_chunks(self, new_chunks: list[dict]):
+        if not new_chunks:
+            return
+
+        # 1. Create embeddings for the new chunks
+        new_embeddings = [
+            create_embedding(chunk["text"])
+            for chunk in new_chunks
+        ]
+
+        # 2. Add new vectors to the existing FAISS index
+        vectors = np.array(
+            new_embeddings,
+            dtype="float32",
+        )
+
+        self.index.add(vectors)
+
+        # 3. Add new chunks to BM25
+        self.bm25.add_chunks(new_chunks)
+
+        # 4. Keeps chunk metadata in same order as FAISS
+        self.chunks.extend(new_chunks)
+
+    def remove_document(self, document_id: str):
+        remaining_chunks = [
+            chunk
+            for chunk in self.chunks
+            if chunk["document_id"] != document_id
+        ]
+
+        if len(remaining_chunks) == len(self.chunks):
+            return False
+
+        self.__init__(remaining_chunks)  # Rebuild entire retriever from remaining chunks
+        return True
 
     def search(
         self,
@@ -70,7 +109,6 @@ class RAGRetriever:
                 top_k=candidate_k,
             )
 
-
             # ---------- RRF ----------
             hybrid_scores = reciprocal_rank_fusion(
                 [
@@ -97,6 +135,7 @@ class RAGRetriever:
                         "text": chunk["text"],
                         "page": chunk["page"],
                         "filename": chunk["filename"],
+                        "document_id": chunk["document_id"],
                         "rrf_score": float(rrf_score),
                         "query_hits": 1, # Number of queries who gave this chunk as a candidate.
                     }
@@ -140,6 +179,7 @@ class RAGRetriever:
                     ),
                     "page": candidate["page"],
                     "filename": candidate["filename"],
+                    "document_id": candidate["document_id"],
                     "rrf_score": candidate["rrf_score"],
                     "rerank_score": float(score),
                     "query_hits": candidate["query_hits"],

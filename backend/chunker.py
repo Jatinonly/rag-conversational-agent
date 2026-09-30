@@ -4,7 +4,8 @@ import re  # regular-expression module.
 def chunk_page(
     page_text: str,
     page_number: int,
-    file_name=str,
+    file_name: str,
+    document_id: str,
     chunk_size: int = 1000,
     overlap: int = 200,
 ) -> list[dict]:
@@ -25,6 +26,7 @@ def chunk_page(
                     "text": chunk,
                     "page": page_number,
                     "filename": file_name,
+                    "document_id": document_id,
                 }
             )
 
@@ -40,6 +42,9 @@ def split_into_sections(text: str) -> list[str]:
             text,
         )
     )
+
+    if not matches:
+        return [text.strip()] if text.strip() else []
 
     sections = []
 
