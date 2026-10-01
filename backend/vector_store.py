@@ -19,7 +19,7 @@ def create_index(embeddings: list[list[float]]):
     return index
 
 
-# semantic searching/retriever:
+# semantic searching/retrieval:
 def search_index(
     index,
     query_embedding: list[float],
@@ -36,3 +36,11 @@ def search_index(
     )
 
     return distances[0], indices[0]
+
+
+def save_index(index, path: str):
+    faiss.write_index(index, path)
+
+
+def load_index(path: str):
+    return faiss.read_index(path)

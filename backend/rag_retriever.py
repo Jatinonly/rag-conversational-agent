@@ -15,26 +15,25 @@ reranker = CrossEncoder(RERANKER_MODEL)
 
 
 class RAGRetriever:
-    def __init__(self, chunks: list[dict]):
+    def __init__(self, chunks: list[dict], index=None):
         self.chunks = chunks
 
-        embeddings = [create_embedding(chunk["text"]) for chunk in chunks]
+        if index is not None:
+            self.index = index
+        else:
+            embeddings = [create_embedding(chunk["text"]) for chunk in chunks]
 
-        # Semantic search - FAISS
-        self.index = create_index(embeddings)
+            self.index = create_index(embeddings)  # Semantic search - FAISS
 
-        # Lexical search - BM25
-        self.bm25 = BM25Retriever(list(chunks))
+        self.bm25 = BM25Retriever(list(chunks))  # Lexical search - BM25
+        
 
     def add_chunks(self, new_chunks: list[dict]):
         if not new_chunks:
             return
 
         # 1. Create embeddings for the new chunks
-        new_embeddings = [
-            create_embedding(chunk["text"])
-            for chunk in new_chunks
-        ]
+        new_embeddings = [create_embedding(chunk["text"]) for chunk in new_chunks]
 
         # 2. Add new vectors to the existing FAISS index
         vectors = np.array(
@@ -52,15 +51,21 @@ class RAGRetriever:
 
     def remove_document(self, document_id: str):
         remaining_chunks = [
-            chunk
+            chunk 
             for chunk in self.chunks
             if chunk["document_id"] != document_id
         ]
 
-        if len(remaining_chunks) == len(self.chunks):
+        if len(remaining_chunks) == len(self.chunks):  # means no chunks deleted.
             return False
 
-        self.__init__(remaining_chunks)  # Rebuild entire retriever from remaining chunks
+        self.chunks = remaining_chunks
+        if not remaining_chunks:  # means zero chunks in remaining_chunks
+            return True
+
+        self.__init__(
+            remaining_chunks
+        )  # Rebuild entire retriever from remaining chunks
         return True
 
     def search(
@@ -137,7 +142,7 @@ class RAGRetriever:
                         "filename": chunk["filename"],
                         "document_id": chunk["document_id"],
                         "rrf_score": float(rrf_score),
-                        "query_hits": 1, # Number of queries who gave this chunk as a candidate.
+                        "query_hits": 1,  # Number of queries who gave this chunk as a candidate.
                     }
 
                 # Same chunk found by another generated query.

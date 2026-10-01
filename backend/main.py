@@ -10,6 +10,8 @@ from chunker import chunk_page
 from rag_retriever import RAGRetriever
 from prompt import build_rag_prompt
 from llm import generate_answer
+from database import SessionLocal, Document, Chunk
+from vector_store import save_index, load_index
 
 app = FastAPI()
 
@@ -31,7 +33,37 @@ class QueryRequest(
     question: str
 
 
-retriever = None
+def load_retriever_from_database():
+    with SessionLocal() as db:
+        chunks = db.query(Chunk).order_by(Chunk.id).all()
+
+        if not chunks:
+            return None
+
+        chunk_data = [
+            {
+                "text": chunk.text,
+                "page": chunk.page,
+                "document_id": chunk.document_id,
+                "filename": chunk.document.filename,
+            }
+            for chunk in chunks
+        ]
+
+        faiss_path = Path("faiss.index")
+
+        if faiss_path.exists():
+            index = load_index(str(faiss_path))
+
+            return RAGRetriever(
+                chunk_data,
+                index=index,
+            )
+
+        return RAGRetriever(chunk_data)
+
+
+retriever = load_retriever_from_database()
 
 
 @app.get("/")
@@ -68,11 +100,35 @@ async def upload_document(file: Annotated[UploadFile, File()]):
         )
         chunks.extend(page_chunks)
 
+    # Save documents + chunks to SQLite
+    with SessionLocal() as db:  # Session created, using which SQLAlchemy interact with database.
+        document = Document(
+            id=document_id,
+            filename=file.filename,
+        )
+
+        db.add(document)  # only tells that "I want to insert this object"
+
+        for chunk in chunks:
+            db.add(
+                Chunk(
+                    document_id=document_id,
+                    text=chunk["text"],
+                    page=chunk["page"],
+                )
+            )
+
+        db.commit()  # actually completes the transaction like add or delete.
+        # db.close() # closes this db session -> automatically done when the "with" block ends
+
+    # Add chunks to the in-memory RAG system
     if retriever is None:
         retriever = RAGRetriever(chunks)
 
     else:
         retriever.add_chunks(chunks)
+
+    save_index(retriever.index, "faiss.index")
 
     return {
         "filename": file.filename,
@@ -84,44 +140,51 @@ async def upload_document(file: Annotated[UploadFile, File()]):
 
 @app.get("/documents")
 async def list_documents():
-    if retriever is None:
+    with SessionLocal() as db:
+        # documents = db.query(Document.filename).distinct().all()
+        documents = db.query(Document).all()
+
         return {
-            "documents": [],
-            "error": "No document has been uploaded yet."
+            "documents": [
+                {
+                    "document_id": document.id,
+                    "filename": document.filename,
+                }
+                for document in documents
+            ]
         }
-
-    documents = {}
-
-    for chunk in retriever.chunks:
-        document_id = chunk["document_id"]
-
-        if document_id not in documents:
-            documents[document_id] = {
-                "document_id": document_id,
-                "filename": chunk["filename"],
-                "chunks": 0,
-            }
-
-        documents[document_id]["chunks"] += 1
-
-    return {"documents": list(documents.values())}
 
 
 @app.delete("/documents/{document_id}")
 async def delete_document(document_id: str):
     global retriever
 
-    if retriever is None:
-        return {"message": "No documents loaded"}
+    # From SQLite
+    with SessionLocal() as db:
+        document = db.get(Document, document_id)
 
-    deleted = retriever.remove_document(document_id)
+        if document is None:
+            return {"message": "Document not found"}
 
-    if not deleted:
-        return {"message": "Document not found"}
+        db.delete(document)
+        db.commit()
+
+    # From in-memory RAG system
+    if retriever is not None:
+        retriever.remove_document(document_id)
+
+        if retriever.chunks:
+            save_index(retriever.index, "faiss.index")
+        else:  # means deleted file was the last file and now there are no chunks left.
+            retriever = None
+
+            faiss_path = Path("faiss.index")  # remove the faiss.index file.
+            if faiss_path.exists():
+                faiss_path.unlink()
 
     return {
         "message": "Document deleted",
-        "total_chunks": len(retriever.chunks),
+        "document_id": document_id,
     }
 
 

@@ -1,14 +1,36 @@
-# Python
+# Python virtual environment
 backend/.venv/
+
+# Python cache
 __pycache__/
 *.pyc
 
 # Environment variables
 .env
+.env.*
 
 # Uploaded documents
 backend/uploads/
 
-# Frontend
+# Local database
+backend/rag.db
+
+# FAISS index
+backend/faiss.index
+
+# Frontend dependencies
 frontend/node_modules/
+
+# Frontend build output
 frontend/dist/
+
+# Logs
+*.log
+
+# IDE / editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
