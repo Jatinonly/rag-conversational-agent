@@ -1,0 +1,52 @@
+[
+  {
+    "question": "What is JWT authentication and how does the server use a JWT?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [1]
+  },
+  {
+    "question": "What is the purpose of a refresh token?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [1]
+  },
+  {
+    "question": "What are the common HTTP methods used by REST APIs?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [1]
+  },
+  {
+    "question": "How do database indexes improve query performance?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [2]
+  },
+  {
+    "question": "What is PostgreSQL and what are foreign keys used for?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [2]
+  },
+  {
+    "question": "What is MongoDB and how does it differ from a relational database?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [2]
+  },
+  {
+    "question": "What features does FastAPI provide for building APIs?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [3]
+  },
+  {
+    "question": "What is the difference between weather and climate?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [3]
+  },
+  {
+    "question": "What are the eight recognized planets in the Solar System?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [3]
+  },
+  {
+    "question": "What is Docker and what is the purpose of Docker Compose?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_pages": [4]
+  }
+]

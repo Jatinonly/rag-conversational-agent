@@ -3,15 +3,17 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 from pydantic import BaseModel
-import uuid
+from uuid import uuid4
 
 from pdf_parser import extract_pages_from_pdf
 from chunker import chunk_page
 from rag_retriever import RAGRetriever
 from prompt import build_rag_prompt
 from llm import generate_answer
-from database import SessionLocal, Document, Chunk
+from database import SessionLocal, Document, Chunk, Conversation, Message
 from vector_store import save_index, load_index
+from conversation import conversations
+from conversation_rewriter import rewrite_conversation_query
 
 app = FastAPI()
 
@@ -30,7 +32,9 @@ UPLOAD_DIR.mkdir(exist_ok=True)  # if uploads folder not present then create it.
 class QueryRequest(
     BaseModel
 ):  # Request should have a field called question, and it should be a string.
+    conversation_id: str
     question: str
+    document_id: str | None = None
 
 
 def load_retriever_from_database():
@@ -73,7 +77,7 @@ def root():
 
 @app.post("/documents/upload")
 async def upload_document(file: Annotated[UploadFile, File()]):
-    document_id = str(uuid.uuid4())
+    document_id = str(uuid4())
 
     global retriever
 
@@ -190,23 +194,79 @@ async def delete_document(document_id: str):
 
 @app.post("/query")
 async def query_document(request: QueryRequest):
+
     if retriever is None:
         return {"error": "No document has been uploaded yet."}
 
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, request.conversation_id)
+
+        if conversation is None:
+            return {"error": "Conversation not found."}
+
+        messages = (
+            db.query(Message)
+            .filter(Message.conversation_id == request.conversation_id)
+            .order_by(Message.id)
+            .limit(6)
+            .all()
+        )
+
+    history = [
+        {
+            "role": message.role,
+            "content": message.content,
+        }
+        for message in messages
+    ]
+
+    if history and any(
+        word in request.question.lower().split()
+        for word in ["it", "they", "them", "this", "that", "these", "those"]
+    ):
+        search_query = rewrite_conversation_query(
+            question=request.question,
+            history=history,
+        )
+    else:
+        search_query = request.question
+
     retrieved_chunks = retriever.search(
-        query=request.question,
+        query=search_query,
         top_k=3,
         candidate_k=10,
         rewrite=True,
         multi_query=True,
+        document_id=request.document_id,
     )
 
     prompt = build_rag_prompt(
         question=request.question,
         retrieved_chunks=retrieved_chunks,
+        history=history,
     )
 
     answer = generate_answer(prompt)
+
+    # Database Update
+    with SessionLocal() as db:
+        db.add(
+            Message(
+                conversation_id=request.conversation_id,
+                role="user",
+                content=request.question,
+            )
+        )
+
+        db.add(
+            Message(
+                conversation_id=request.conversation_id,
+                role="assistant",
+                content=answer,
+            )
+        )
+
+        db.commit()
 
     sources = [
         {
@@ -224,3 +284,71 @@ async def query_document(request: QueryRequest):
         "answer": answer,
         "sources": sources,
     }
+
+
+@app.post("/conversations")
+async def create_conversation():
+    conversation_id = str(uuid4())
+
+    with SessionLocal() as db:
+        conversation = Conversation(
+            id=conversation_id,
+        )
+
+        db.add(conversation)
+        db.commit()
+
+    conversations[conversation_id] = []
+
+    return {"conversation_id": conversation_id}
+
+
+@app.get("/conversations/{conversation_id}")
+async def get_conversation(conversation_id: str):
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+
+        if conversation is None:
+            return {"error": "Conversation not found."}
+
+        messages = (
+            db.query(Message)
+            .filter(Message.conversation_id == conversation_id)
+            .order_by(Message.id)
+            .all()
+        )
+
+    return {
+        "conversation_id": conversation_id,
+        "messages": [
+            {
+                "role": message.role,
+                "content": message.content,
+            }
+            for message in messages
+        ],
+    }
+
+
+@app.delete("/conversations/{conversation_id}")
+async def delete_conversation(conversation_id: str):
+
+    with SessionLocal() as db:
+        conversation = db.get(Conversation, conversation_id)
+
+        if conversation is None:
+            return {"error": "Conversation not found."}
+
+        db.delete(conversation)
+        db.commit()
+
+    return {
+        "message": "Conversation deleted",
+        "conversation_id": conversation_id,
+    }
+
+
+@app.get("/debug/conversations")
+def debug_conversations():
+    return conversations

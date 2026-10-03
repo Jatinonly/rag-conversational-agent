@@ -34,7 +34,7 @@ class Document(Base):
         cascade="all, delete-orphan",  # This does-If a Document is deleted, its associated Chunks are also deleted.
     )
 
-    # documents table looks like: (NOTE- chunks is not a column but a attribute)
+    # documents table looks like: (NOTE- chunks is not a column but an attribute)
     # -------------------------
     # id          TEXT   PK
     # filename    TEXT   NOT NULL
@@ -52,6 +52,44 @@ class Chunk(Base):
     page: Mapped[int] = mapped_column(Integer, nullable=False)
 
     document: Mapped["Document"] = relationship(back_populates="chunks")
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+    )
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+    )
+
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.id"),
+        nullable=False,
+    )
+
+    role: Mapped[str] = mapped_column(
+        String,
+        nullable=False,
+    )
+
+    content: Mapped[str] = mapped_column(
+        Text,
+        nullable=False,
+    )
+
+    conversation: Mapped["Conversation"] = relationship(back_populates="messages")
 
 
 Base.metadata.create_all(engine)

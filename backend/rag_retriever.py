@@ -26,7 +26,6 @@ class RAGRetriever:
             self.index = create_index(embeddings)  # Semantic search - FAISS
 
         self.bm25 = BM25Retriever(list(chunks))  # Lexical search - BM25
-        
 
     def add_chunks(self, new_chunks: list[dict]):
         if not new_chunks:
@@ -75,10 +74,21 @@ class RAGRetriever:
         candidate_k: int = 10,
         rewrite: bool = True,
         multi_query: bool = True,
+        document_id: str | None = None,
     ) -> list[dict]:
 
-        # 1. Query transformation
+        # filter chunks of the particular document_id only.
+        if document_id is not None:
+            allowed_indices = [
+                i
+                for i, chunk in enumerate(self.chunks)
+                if chunk["document_id"] == document_id
+            ]
+        else:
+            allowed_indices = list(range(len(self.chunks)))
 
+
+        # 1. Query transformation
         queries = [query]
 
         if rewrite:
@@ -103,15 +113,20 @@ class RAGRetriever:
             faiss_distances, faiss_indices = search_index(
                 self.index,
                 query_embedding,
-                candidate_k,
+                len(self.chunks),
             )
 
-            faiss_indices = list(faiss_indices)
+            faiss_indices = [
+                index
+                for index in faiss_indices
+                if index in allowed_indices
+            ][:candidate_k]
 
             # ---------- BM25 ----------
             bm25_indices = self.bm25.search(
                 query=search_query,
                 top_k=candidate_k,
+                allowed_indices=allowed_indices,
             )
 
             # ---------- RRF ----------

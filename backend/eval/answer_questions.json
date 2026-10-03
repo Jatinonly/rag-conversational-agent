@@ -1,0 +1,32 @@
+[
+  {
+    "question": "What is JWT authentication and how does the server use a JWT?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_answer": "JWT authentication uses a JSON Web Token containing information about the authenticated user. The client sends the token with subsequent API requests, and the server verifies the token before allowing access to protected resources."
+  },
+  {
+    "question": "What is the purpose of a refresh token?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_answer": "A refresh token can be used to obtain a new access token when the existing access token expires, without requiring the user to log in again."
+  },
+  {
+    "question": "What are the common HTTP methods used by REST APIs?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_answer": "Common HTTP methods used by REST APIs include GET for retrieving resources, POST for creating resources, PUT or PATCH for updating resources, and DELETE for removing resources."
+  },
+  {
+    "question": "How do database indexes improve query performance?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_answer": "A database index improves query performance by allowing the database to locate relevant records more efficiently instead of scanning every row in a table."
+  },
+  {
+    "question": "What is PostgreSQL and what are foreign keys used for?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_answer": "PostgreSQL is an open-source relational database management system that supports SQL, transactions, constraints, indexes, joins, and other database features. Foreign keys can be used to represent relationships between tables."
+  },
+  {
+    "question": "What is MongoDB and how does it differ from a relational database?",
+    "document_id": "66e2b41b-5f3e-4315-9d56-e98f667572a4",
+    "expected_answer": "MongoDB is a NoSQL database that stores information in documents rather than traditional relational rows. Its documents are generally represented using a JSON-like structure."
+  }
+]
