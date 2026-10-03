@@ -5,4 +5,3 @@ PyMuPDF
 sentence-transformers
 faiss-cpu
 transformers
-torch

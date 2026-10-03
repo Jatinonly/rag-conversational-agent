@@ -1,9 +1,17 @@
 from rank_bm25 import BM25Okapi
 
+from logging_config import logger
+
 
 class BM25Retriever:
     def __init__(self, chunks: list[dict]):
         self.chunks = chunks
+
+        logger.info(
+            "Initializing BM25 retriever | chunks=%d",
+            len(chunks),
+        )
+
         self._build_index()
 
     # The underscore is a Python convention like in _build_index which means:
@@ -11,18 +19,32 @@ class BM25Retriever:
     # callers normally don't call it directly."
     def _build_index(self):
 
+        logger.info(
+            "Building BM25 index | chunks=%d",
+            len(self.chunks),
+        )
+
         tokenized_chunks = [
             chunk["text"].lower().split() for chunk in self.chunks
         ]  # Tokenzied Chunk looks like: [ ["Running", "improves", ...chunk1], ["Swimming", "helps", ...chunk2], ...]
 
         self.bm25 = BM25Okapi(tokenized_chunks)
 
-    def add_chunks(
-        self,
-        new_chunks: list[dict]
-    ):
+        logger.info("BM25 index built successfully")
+
+    def add_chunks(self, new_chunks: list[dict]):
+        logger.info(
+            "Adding chunks to BM25 retriever | new_chunks=%d",
+            len(new_chunks),
+        )
+
         self.chunks.extend(new_chunks)
         self._build_index()
+
+        logger.info(
+            "Chunks added and BM25 index rebuilt | total_chunks=%d",
+            len(self.chunks),
+        )
 
     def search(
         self,
@@ -30,6 +52,12 @@ class BM25Retriever:
         top_k: int = 3,
         allowed_indices: list[int] | None = None,
     ) -> list[int]:
+
+        logger.info(
+            "BM25 search started | query=%s | top_k=%d",
+            query,
+            top_k,
+        )
 
         tokenized_query = query.lower().split()
 
@@ -46,4 +74,11 @@ class BM25Retriever:
             reverse=True,
         )
 
-        return ranked_indices[:top_k]
+        results = ranked_indices[:top_k]
+
+        logger.info(
+            "BM25 search completed | results=%d",
+            len(results),
+        )
+
+        return results

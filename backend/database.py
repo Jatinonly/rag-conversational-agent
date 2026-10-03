@@ -7,10 +7,14 @@ from sqlalchemy.orm import (
     sessionmaker,
 )
 
+from logging_config import logger
+
 DATABASE_URL = "sqlite:///./rag.db"
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine)
+
+logger.info("Database engine and session factory initialized")
 
 # DeclarativeBase → base class for your database models.
 # Mapped → tells Python/SQLAlchemy what type of data a field contains.

@@ -8,28 +8,53 @@ from multi_query import generate_queries
 from context_compressor import compress_context
 from bm25_retriever import BM25Retriever
 from rrf import reciprocal_rank_fusion
+from logging_config import logger
 
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
+logger.info("Loading cross-encoder reranker | model=%s", RERANKER_MODEL)
+
 reranker = CrossEncoder(RERANKER_MODEL)
+
+logger.info("Cross-encoder reranker loaded successfully")
 
 
 class RAGRetriever:
     def __init__(self, chunks: list[dict], index=None):
         self.chunks = chunks
 
+        logger.info(
+            "Initializing RAG retriever | chunks=%d | existing_index=%s",
+            len(chunks),
+            index is not None,
+        )
+
         if index is not None:
             self.index = index
+
+            logger.info("Using existing FAISS index")
         else:
+            logger.info("Creating FAISS index | chunks=%d", len(chunks))
+
             embeddings = [create_embedding(chunk["text"]) for chunk in chunks]
 
             self.index = create_index(embeddings)  # Semantic search - FAISS
 
+            logger.info("FAISS index created successfully")
+
         self.bm25 = BM25Retriever(list(chunks))  # Lexical search - BM25
+
+        logger.info("RAG retriever initialized successfully")
 
     def add_chunks(self, new_chunks: list[dict]):
         if not new_chunks:
+            logger.warning("add_chunks called with no new chunks")
             return
+
+        logger.info(
+            "Adding chunks to RAG retriever | new_chunks=%d",
+            len(new_chunks),
+        )
 
         # 1. Create embeddings for the new chunks
         new_embeddings = [create_embedding(chunk["text"]) for chunk in new_chunks]
@@ -48,23 +73,51 @@ class RAGRetriever:
         # 4. Keeps chunk metadata in same order as FAISS
         self.chunks.extend(new_chunks)
 
+        logger.info(
+            "Chunks added successfully | total_chunks=%d",
+            len(self.chunks),
+        )
+
     def remove_document(self, document_id: str):
+        logger.info(
+            "Removing document from RAG retriever | document_id=%s",
+            document_id,
+        )
+
         remaining_chunks = [
-            chunk 
-            for chunk in self.chunks
-            if chunk["document_id"] != document_id
+            chunk for chunk in self.chunks if chunk["document_id"] != document_id
         ]
 
         if len(remaining_chunks) == len(self.chunks):  # means no chunks deleted.
+            logger.warning(
+                "Document not found in RAG retriever | document_id=%s",
+                document_id,
+            )
             return False
 
         self.chunks = remaining_chunks
+
         if not remaining_chunks:  # means zero chunks in remaining_chunks
+            logger.info(
+                "No chunks remain after document removal | document_id=%s",
+                document_id,
+            )
             return True
+
+        logger.info(
+            "Rebuilding RAG retriever after document removal | remaining_chunks=%d",
+            len(remaining_chunks),
+        )
 
         self.__init__(
             remaining_chunks
         )  # Rebuild entire retriever from remaining chunks
+
+        logger.info(
+            "RAG retriever rebuilt successfully | remaining_chunks=%d",
+            len(remaining_chunks),
+        )
+
         return True
 
     def search(
@@ -87,6 +140,16 @@ class RAGRetriever:
         else:
             allowed_indices = list(range(len(self.chunks)))
 
+        logger.info(
+            "RAG search configuration | chunks=%d | allowed_chunks=%d | "
+            "top_k=%d | candidate_k=%d | rewrite=%s | multi_query=%s",
+            len(self.chunks),
+            len(allowed_indices),
+            top_k,
+            candidate_k,
+            rewrite,
+            multi_query,
+        )
 
         # 1. Query transformation
         queries = [query]
@@ -98,6 +161,11 @@ class RAGRetriever:
             queries = generate_queries(queries[0])
 
         queries = list(dict.fromkeys(queries))
+
+        logger.info(
+            "Query transformation completed | generated_queries=%d",
+            len(queries),
+        )
 
         # 2. Hybrid retrieval + RRF
 
@@ -117,9 +185,7 @@ class RAGRetriever:
             )
 
             faiss_indices = [
-                index
-                for index in faiss_indices
-                if index in allowed_indices
+                index for index in faiss_indices if index in allowed_indices
             ][:candidate_k]
 
             # ---------- BM25 ----------
@@ -171,6 +237,11 @@ class RAGRetriever:
         # Convert dictionary back into list
         candidates = list(all_candidates.values())
 
+        logger.info(
+            "Hybrid retrieval completed | unique_candidates=%d",
+            len(candidates),
+        )
+
         # 3. Cross-encoder reranking
 
         pairs = [
@@ -183,6 +254,11 @@ class RAGRetriever:
             zip(scores, candidates),
             key=lambda item: item[0],
             reverse=True,
+        )
+
+        logger.info(
+            "Cross-encoder reranking completed | candidates=%d",
+            len(ranked),
         )
 
         # 4. Contextual compression
@@ -205,5 +281,10 @@ class RAGRetriever:
                     "query_hits": candidate["query_hits"],
                 }
             )
+
+        logger.info(
+            "Context compression completed | results=%d",
+            len(results),
+        )
 
         return results
