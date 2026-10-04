@@ -6,6 +6,22 @@ The system combines semantic search, keyword-based retrieval, hybrid retrieval, 
 
 ---
 
+## 🖥️ Screenshots
+
+### Chat Interface
+
+![Chat Interface](./screenshots/chat-interface.png)
+
+### Conversation History
+
+![Conversation History](./screenshots/conversation-history.png)
+
+### Retrieved Sources
+
+![Retrieved Sources](./screenshots/retrieved-sources.png)
+
+---
+
 ## 🚀 Features
 
 - 📄 PDF document upload and parsing
@@ -150,6 +166,70 @@ Sentence Transformer Embeddings
 
 ---
 
+## 🚀 Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone <your-repository-url>
+cd rag-conversational-agent
+```
+
+### 2. Backend setup
+
+Create and activate a virtual environment (Windows):
+
+```powershell
+cd backend
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+Install dependencies:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### 3. Start Redis
+
+Run Redis using Docker:
+
+```bash
+docker run -d --name rag-redis -p 6379:6379 redis
+```
+
+Verify that the container is running:
+
+```bash
+docker ps
+```
+
+### 4. Start the backend
+
+From the `backend` directory:
+
+```bash
+python -m uvicorn main:app --reload
+```
+
+- API: `http://localhost:8000`
+- FastAPI docs: `http://localhost:8000/docs`
+
+### 5. Start the frontend
+
+Open another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will normally be available at `http://localhost:5173`.
+
+---
+
 ## 🧠 Techniques Used
 
 ### Document Processing
@@ -169,8 +249,8 @@ Documents are divided into smaller chunks using:
 Current chunk configuration:
 
 ```text
-Chunk size: 1000 characters
-Overlap:    200 characters
+Chunk size: 800 characters
+Overlap:    150 characters
 ```
 
 ### Embeddings
@@ -281,58 +361,6 @@ python -m pytest tests/
 
 ---
 
-## 📁 Project Structure
-
-```text
-rag-conversational-agent/
-│
-├── backend/
-│   ├── main.py
-│   ├── database.py
-│   ├── redis_client.py
-│   ├── logging_config.py
-│   │
-│   ├── pdf_parser.py
-│   ├── chunker.py
-│   ├── embedding.py
-│   ├── vector_store.py
-│   ├── bm25_retriever.py
-│   ├── rrf.py
-│   ├── retriever.py
-│   │
-│   ├── query_rewriter.py
-│   ├── multi_query.py
-│   ├── context_compressor.py
-│   ├── prompt.py
-│   ├── llm.py
-│   │
-│   ├── eval/
-│   │   ├── retrieval_questions.json
-│   │   ├── evaluate_retrieval.py
-│   │   ├── answer_questions.json
-│   │   └── evaluate_answers.py
-│   │
-│   ├── tests/
-│   │   ├── test_retrieval.py
-│   │   ├── test_metadata_filtering.py
-│   │   └── test_conversation.py
-│   │
-│   ├── requirements.txt
-│   ├── Dockerfile
-│   └── .dockerignore
-│
-├── frontend/
-│   ├── src/
-│   ├── package.json
-│   └── ...
-│
-├── screenshots/
-├── .gitignore
-└── README.md
-```
-
----
-
 ## 🛠️ Tech Stack
 
 ### Backend
@@ -351,7 +379,6 @@ rag-conversational-agent/
 | SQLAlchemy | Database ORM |
 | SQLite | Persistent storage |
 | Redis | Caching |
-| Pytest | Testing |
 
 ### Frontend
 
@@ -370,30 +397,6 @@ rag-conversational-agent/
 | Docker | Containerization |
 | Git | Version control |
 | GitHub | Source control |
-
----
-
-## 🖥️ Screenshots
-
-### Chat Interface
-
-![Chat Interface](./screenshots/chat-interface.png)
-
-### Document Upload
-
-![Document Upload](./screenshots/document-upload.png)
-
-### Conversation History
-
-![Conversation History](./screenshots/conversation-history.png)
-
-### Retrieved Sources
-
-![Retrieved Sources](./screenshots/retrieved-sources.png)
-
-### Evaluation Results
-
-![Evaluation Results](./screenshots/evaluation-results.png)
 
 ---
 
@@ -459,89 +462,6 @@ Example response:
   "cached": false
 }
 ```
-
----
-
-## 🔮 Future Improvements
-
-- PostgreSQL instead of SQLite
-- pgvector or a dedicated vector database instead of local FAISS
-- Background document processing
-- Object storage for uploaded documents
-- LLM worker architecture
-- Horizontal backend scaling
-- Rate limiting
-- Better observability and tracing
-- More comprehensive RAG evaluation
-- Streaming LLM responses
-- Advanced query transformation
-- Better document-level access control
-- Docker Compose deployment
-- CI/CD pipeline
-
----
-
-## 🚀 Getting Started
-
-### 1. Clone the repository
-
-```bash
-git clone <your-repository-url>
-cd rag-conversational-agent
-```
-
-### 2. Backend setup
-
-Create and activate a virtual environment (Windows):
-
-```powershell
-cd backend
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-Install dependencies:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-### 3. Start Redis
-
-Run Redis using Docker:
-
-```bash
-docker run -d --name rag-redis -p 6379:6379 redis
-```
-
-Verify that the container is running:
-
-```bash
-docker ps
-```
-
-### 4. Start the backend
-
-From the `backend` directory:
-
-```bash
-python -m uvicorn main:app --reload
-```
-
-- API: `http://localhost:8000`
-- FastAPI docs: `http://localhost:8000/docs`
-
-### 5. Start the frontend
-
-Open another terminal:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend will normally be available at `http://localhost:5173`.
 
 ---
 
