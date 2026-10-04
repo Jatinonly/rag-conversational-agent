@@ -13,6 +13,7 @@ def create_index(embeddings: list[list[float]]):
     # Creates an empty "object" or "FAISS search index" with dimension = 384
     # because the embedding model we used i.e. "all-MiniLM-L6-v2" creates
     # each embeddings vector with 384 values init. like- [-0.12,0.23, 0.56, -0.31, .... till 384 values]
+    # which uses Euclidean distance.
 
     index.add(vectors)
 

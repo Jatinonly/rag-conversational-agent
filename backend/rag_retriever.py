@@ -1,6 +1,6 @@
 import numpy as np
 
-from embedding import create_embedding
+from embedding import create_embedding, create_embeddings
 from vector_store import create_index, search_index
 from sentence_transformers import CrossEncoder
 from query_rewriter import rewrite_query
@@ -36,7 +36,8 @@ class RAGRetriever:
         else:
             logger.info("Creating FAISS index | chunks=%d", len(chunks))
 
-            embeddings = [create_embedding(chunk["text"]) for chunk in chunks]
+            # Doing batch embedding by giving list[chunks] together.
+            embeddings = create_embeddings([chunk["text"] for chunk in chunks])
 
             self.index = create_index(embeddings)  # Semantic search - FAISS
 
@@ -57,7 +58,9 @@ class RAGRetriever:
         )
 
         # 1. Create embeddings for the new chunks
-        new_embeddings = [create_embedding(chunk["text"]) for chunk in new_chunks]
+        new_embeddings = create_embeddings(
+            [chunk["text"] for chunk in new_chunks]
+        )
 
         # 2. Add new vectors to the existing FAISS index
         vectors = np.array(
@@ -67,7 +70,7 @@ class RAGRetriever:
 
         self.index.add(vectors)
 
-        # 3. Add new chunks to BM25
+        # 3. Add new chunks to BM25 - index created again.
         self.bm25.add_chunks(new_chunks)
 
         # 4. Keeps chunk metadata in same order as FAISS
@@ -140,6 +143,8 @@ class RAGRetriever:
         else:
             allowed_indices = list(range(len(self.chunks)))
 
+        allowed_set = set(allowed_indices)  # for fast lookup
+
         logger.info(
             "RAG search configuration | chunks=%d | allowed_chunks=%d | "
             "top_k=%d | candidate_k=%d | rewrite=%s | multi_query=%s",
@@ -169,8 +174,6 @@ class RAGRetriever:
 
         # 2. Hybrid retrieval + RRF
 
-        # Store unique chunks across ALL generated queries.
-        # Key = chunk index
         all_candidates = {}
 
         for search_query in queries:
@@ -185,7 +188,7 @@ class RAGRetriever:
             )
 
             faiss_indices = [
-                index for index in faiss_indices if index in allowed_indices
+                int(index) for index in faiss_indices if index in allowed_set
             ][:candidate_k]
 
             # ---------- BM25 ----------

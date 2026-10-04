@@ -1,64 +1,205 @@
-import re  # regular-expression module.
+import re
+
+# Headings like: "1. Title", "1) Title", or "2.3 Title"
+HEADING_PATTERN = re.compile(r"^(\d+\.\d+(\.\d+)*|\d+[.)])\s+\S")
 
 
-def chunk_page(
-    page_text: str,
-    page_number: int,
-    file_name: str,
-    document_id: str,
-    chunk_size: int = 1000,
-    overlap: int = 200,
-) -> list[dict]:
+def is_heading(line):
+    line = line.strip()
+
+    if len(line) < 3:  # Heading cant be shorter than 3 chars
+        return False
+    if len(line) > 80:  # Heading cant be longer than 80 chars
+        return False
+
+    match = HEADING_PATTERN.match(line)
+    if match is None:
+        return False
+
+    # Lines ending like any sentence are list items, not headings
+    last_character = line[-1]
+    if last_character in [".", ",", ";", ":"]:
+        return False
+
+    return True
+
+
+def split_into_sections(text, starting_heading):
+    """
+    Produces something like:
+    [
+        {
+            "heading": "1. Introduction",
+            "body": "Running is a physical activity.\nIt improves cardiovascular fitness."
+        },
+        {
+            "heading": "2. Benefits",
+            "body": "Running improves heart health.\nIt also improves endurance."
+        }
+    ]
+    """
+
+    sections = []
+    current_heading = starting_heading
+    body_lines = []
+
+    for line in text.splitlines():
+        if is_heading(line):
+
+            body = "\n".join(body_lines).strip()
+            if body != "":
+                sections.append({"heading": current_heading, "body": body})
+
+            current_heading = line.strip()
+            body_lines = []
+        else:
+            body_lines.append(line)
+
+    # Save the final section of the page
+    body = "\n".join(body_lines).strip()
+    if body != "":
+        sections.append({"heading": current_heading, "body": body})
+
+    return {"sections": sections, "last_heading": current_heading}
+
+
+def split_into_units(body):
+    """Breaks text into sentences and bullet lines like:
+    [
+        "Running improves cardiovascular fitness.",
+        "It improves endurance.",
+        "Regular training is important.",
+        "• Train three times per week.",
+        "• Increase distance gradually."
+    ]"""
+
+    parts = re.split(r"(?<=[.!?])\s+|\n+", body)
+
+    units = []
+    for part in parts:
+        cleaned = part.strip()
+        if cleaned != "":
+            units.append(cleaned)
+
+    return units
+
+
+def split_long_unit(unit, size):
+    """If one sentence is longer than a chunk, break it."""
+    if len(unit) <= size:
+        return [unit]
+
+    pieces = []
+    current = ""
+
+    for word in unit.split():
+        if current == "":
+            current = word
+        elif len(current) + 1 + len(word) > size:
+            pieces.append(current)
+            current = word
+        else:
+            current = current + " " + word
+
+    if current != "":
+        pieces.append(current)
+
+    return pieces
+
+
+def pack_units(units, size, overlap):
+    """
+    Puts whole sentences into chunks until a chunk is full.
+    The start of each new chunk repeats the last few sentences
+    of the previous chunk (the overlap).
+    """
     chunks = []
+    current_units = []
+    current_length = 0
 
-    sections = split_into_sections(page_text)
+    for unit in units:
 
-    for section in sections:
-        start = 0
+        if len(current_units) > 0:
+            extra = len(unit) + 1
+        else:
+            extra = len(unit)
 
-        while start < len(section):
-            end = start + chunk_size
+        chunk_is_full = len(current_units) > 0 and current_length + extra > size
 
-            chunk = section[start:end]
+        if chunk_is_full:
 
-            chunks.append(
-                {
-                    "text": chunk,
-                    "page": page_number,
-                    "filename": file_name,
-                    "document_id": document_id,
-                }
-            )
+            chunks.append("\n".join(current_units))
 
-            start = end - overlap
+            carried_units = []
+            carried_length = 0
+
+            for old_unit in reversed(current_units):
+                if carried_length + len(old_unit) + 1 > overlap:
+                    break
+                carried_units.insert(0, old_unit)
+                carried_length = carried_length + len(old_unit) + 1
+
+            if carried_length + len(unit) + 1 > size:
+                carried_units = []
+                carried_length = 0
+
+            current_units = carried_units
+            current_length = carried_length
+
+            if len(current_units) > 0:
+                extra = len(unit) + 1
+            else:
+                extra = len(unit)
+
+        current_units.append(unit)
+        current_length = current_length + extra
+
+    if len(current_units) > 0:
+        chunks.append("\n".join(current_units))
 
     return chunks
 
 
-def split_into_sections(text: str) -> list[str]:
-    matches = list(
-        re.finditer(
-            r"(?m)^\d+\.\s+.+$",
-            text,
-        )
-    )
+def chunk_document(pages, file_name, document_id, chunk_size=800, overlap=150):
+    all_chunks = []
+    current_heading = ""  # remembered across pages
 
-    if not matches:
-        return [text.strip()] if text.strip() else []
+    for page in pages:
+        result = split_into_sections(page["text"], current_heading)
+        sections = result["sections"]
+        current_heading = result["last_heading"]
 
-    sections = []
+        for section in sections:
+            section_heading = section["heading"]
+            body = section["body"]
 
-    for i, match in enumerate(matches):
-        start = match.start()
+            if section_heading != "":
+                room = chunk_size - len(section_heading) - 1
+            else:
+                room = chunk_size
 
-        if i + 1 < len(matches):
-            end = matches[i + 1].start()
-        else:
-            end = len(text)
+            # Body into small units:
+            units = []
+            for unit in split_into_units(body):
+                small_pieces = split_long_unit(unit, room)
+                for piece in small_pieces:
+                    units.append(piece)
 
-        section = text[start:end].strip()
+            # Pack units into chunks, then add the heading on top
+            text_pieces = pack_units(units, room, overlap)
 
-        if section:
-            sections.append(section)
+            for piece in text_pieces:
+                if section_heading != "":
+                    full_text = section_heading + "\n" + piece
+                else:
+                    full_text = piece
 
-    return sections
+                chunk = {
+                    "text": full_text,
+                    "page": page["page"],
+                    "filename": file_name,
+                    "document_id": document_id,
+                }
+                all_chunks.append(chunk)
+
+    return all_chunks

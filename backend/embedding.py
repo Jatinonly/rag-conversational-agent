@@ -6,6 +6,13 @@ model = SentenceTransformer(EMBEDDING_MODEL)
 
 
 def create_embedding(text: str) -> list[float]:
-    vector = model.encode(text)
+    return create_embeddings([text])[0]
 
-    return vector.tolist()
+
+# For batch embedding, thus accepts list[chunks text]
+def create_embeddings(texts: list[str]) -> list[list[float]]:
+    if not texts:
+        return []
+
+    vectors = model.encode(texts)
+    return vectors.tolist()

@@ -7,5 +7,5 @@ router = APIRouter()
 
 
 @router.post("/query")
-async def query_document(request: QueryRequest):
+def query_document(request: QueryRequest):
     return process_query(request)

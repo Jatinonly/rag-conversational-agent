@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import uuid4
 
-from chunker import chunk_page
+from chunker import chunk_document
 from database import Chunk, Document, SessionLocal
 from logging_config import logger
 from pdf_parser import extract_pages_from_pdf
@@ -38,19 +38,13 @@ def upload_document(filename: str, file_bytes: bytes) -> dict:
         len(pages),
     )
 
-    chunks = []
-    for page in pages:
-        chunks.extend(
-            chunk_page(
-                page_text=page["text"],
-                page_number=page["page"],
-                file_name=filename,
-                document_id=document_id,
-                chunk_size=1000,
-                overlap=200,
-            )
-        )
-
+    chunks = chunk_document(
+        pages=pages,
+        file_name=filename,
+        document_id=document_id,
+        chunk_size=800,
+        overlap=150,
+    )
     logger.info(
         "Document chunking completed | document_id=%s | chunks=%d",
         document_id,
@@ -59,11 +53,11 @@ def upload_document(filename: str, file_bytes: bytes) -> dict:
 
     if not chunks:
         raise NoExtractableTextError("The PDF contains no extractable text.")
-
-    file_path = (
-        UPLOAD_DIR / f"{document_id}_{filename}"
-    )  # if user uploads 2 same named file
+    
+    # if user uploads 2 same named file
+    file_path = UPLOAD_DIR / f"{document_id}_{filename}"
     file_path.write_bytes(file_bytes)
+    
     logger.info(
         "File saved | document_id=%s | path=%s",
         document_id,
