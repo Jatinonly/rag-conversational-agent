@@ -9,3 +9,4 @@ numpy
 rank-bm25
 redis
 sqlalchemy
+pytest

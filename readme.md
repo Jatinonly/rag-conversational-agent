@@ -42,7 +42,6 @@ The system combines semantic search, keyword-based retrieval, hybrid retrieval, 
 - 📝 Backend logging
 - 🌐 React frontend
 - 🎨 Tailwind CSS + shadcn/ui
-- 🐳 Docker support
 
 ---
 
@@ -193,7 +192,8 @@ python -m pip install -r requirements.txt
 
 ### 3. Start Redis
 
-Run Redis using Docker:
+Start a Redis server locally. If Docker is installed, you can run Redis in a
+container:
 
 ```bash
 docker run -d --name rag-redis -p 6379:6379 redis
@@ -338,8 +338,7 @@ backend/
 └── eval/
     ├── retrieval_questions.json
     ├── evaluate_retrieval.py
-    ├── answer_questions.json
-    └── evaluate_answers.py
+    └── answer_questions.json
 ```
 
 ---
@@ -394,7 +393,6 @@ python -m pytest tests/
 
 | Technology | Purpose |
 |---|---|
-| Docker | Containerization |
 | Git | Version control |
 | GitHub | Source control |
 
