@@ -1,17 +1,18 @@
-import React from 'react'
-import { Bot, User, Zap } from 'lucide-react'
-import { SourceList } from './SourceList'
-import { Badge } from '../ui/badge'
-import { cn } from '../../lib/utils'
+import React from "react";
+import { Bot, User, Zap } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import { SourceList } from "./SourceList";
+import { Badge } from "../ui/badge";
+import { cn } from "../../lib/utils";
 
 export function MessageBubble({ message }) {
-  const isUser = message.role === 'user'
+  const isUser = message.role === "user";
 
   return (
     <div
       className={cn(
-        'flex w-full gap-3 py-4 text-sm animate-in fade-in duration-200',
-        isUser ? 'justify-end' : 'justify-start'
+        "flex w-full gap-3 py-4 text-sm animate-in fade-in duration-200",
+        isUser ? "justify-end" : "justify-start",
       )}
     >
       {!isUser && (
@@ -22,20 +23,20 @@ export function MessageBubble({ message }) {
 
       <div
         className={cn(
-          'relative max-w-[85%] sm:max-w-[78%] rounded-2xl px-4 py-3 leading-relaxed',
+          "relative max-w-[85%] sm:max-w-[78%] rounded-2xl px-4 py-3 leading-relaxed",
           isUser
-            ? 'bg-slate-900 text-white rounded-tr-xs shadow-xs'
-            : 'bg-white text-slate-900 border border-slate-200/90 rounded-tl-xs shadow-xs'
+            ? "bg-slate-900 text-white rounded-tr-xs shadow-xs"
+            : "bg-white text-slate-900 border border-slate-200/90 rounded-tl-xs shadow-xs",
         )}
       >
         <div className="flex items-center justify-between gap-2 mb-1">
           <span
             className={cn(
-              'text-[11px] font-semibold tracking-wide uppercase',
-              isUser ? 'text-slate-300' : 'text-slate-500'
+              "text-[11px] font-semibold tracking-wide uppercase",
+              isUser ? "text-slate-300" : "text-slate-500",
             )}
           >
-            {isUser ? 'You' : 'Assistant'}
+            {isUser ? "You" : "Assistant"}
           </span>
 
           {/* Step 8: Redis Cache indicator */}
@@ -52,8 +53,35 @@ export function MessageBubble({ message }) {
         </div>
 
         {/* Content with whitespace and paragraph rendering */}
-        <div className={cn('whitespace-pre-wrap text-sm', isUser ? 'text-white' : 'text-slate-800')}>
-          {message.content}
+        <div
+          className={cn(
+            "whitespace-pre-wrap text-sm",
+            isUser ? "text-white" : "text-slate-800",
+          )}
+        >
+          {isUser ? (
+            message.content
+          ) : (
+            <ReactMarkdown
+              components={{
+                strong: ({ node, ...props }) => (
+                  <strong className="font-bold text-slate-950" {...props} />
+                ),
+                p: ({ node, ...props }) => (
+                  <p className="mb-2 last:mb-0" {...props} />
+                ),
+                ul: ({ node, ...props }) => (
+                  <ul className="list-disc pl-4 mb-2" {...props} />
+                ),
+                ol: ({ node, ...props }) => (
+                  <ol className="list-decimal pl-4 mb-2" {...props} />
+                ),
+                li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+              }}
+            >
+              {message.content}
+            </ReactMarkdown>
+          )}
         </div>
 
         {/* Step 7: Sources rendered beneath assistant answer */}
@@ -68,6 +96,5 @@ export function MessageBubble({ message }) {
         </div>
       )}
     </div>
-  )
+  );
 }
-

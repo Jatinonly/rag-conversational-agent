@@ -1,6 +1,6 @@
 import json
 
-from main import retriever
+from services.retriever_service import retriever
 from prompt import build_rag_prompt
 from llm import generate_answer
 

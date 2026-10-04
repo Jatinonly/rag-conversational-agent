@@ -20,7 +20,6 @@ logger.info("Database engine and session factory initialized")
 # Mapped → tells Python/SQLAlchemy what type of data a field contains.
 # mapped_column → defines an actual database column.
 
-
 # Create a new class called "Base" that inherits from "DeclarativeBase".
 class Base(DeclarativeBase):
     # "pass" means Don't put any additional code inside this class for now.

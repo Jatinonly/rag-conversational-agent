@@ -5,3 +5,7 @@ PyMuPDF
 sentence-transformers
 faiss-cpu
 transformers
+numpy
+rank-bm25
+redis
+sqlalchemy
