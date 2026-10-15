@@ -325,7 +325,7 @@ FAISS is used for the vector index, while Redis is used as a temporary cache.
 The project includes a retrieval evaluation dataset.
 
 ```text
-Questions: 10
+Questions: 50
 
 Recall@1: 90%
 Recall@3: 100%
