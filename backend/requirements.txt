@@ -10,3 +10,5 @@ rank-bm25
 redis
 sqlalchemy
 pytest
+google-genai
+python-dotenv
