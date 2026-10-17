@@ -272,11 +272,11 @@ class RAGRetriever:
 
             results.append(
                 {
-                    # "text": compress_context(
-                    #     question=query,
-                    #     text=candidate["text"],
-                    # ),
-                    "text": candidate["text"],
+                    "text": compress_context(
+                        question=query,
+                        text=candidate["text"],
+                    ),
+                    # "text": candidate["text"],
                     "page": candidate["page"],
                     "filename": candidate["filename"],
                     "document_id": candidate["document_id"],

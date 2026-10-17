@@ -23,7 +23,11 @@ def cache_get(key: str) -> str | None:
         return None
 
 
-def cache_set(key: str, value: str, ttl: int = 3600) -> None:
+def cache_set(
+    key: str, value: str, ttl: int = 3600
+) -> (
+    None
+):  # ttl -> time-to-live(how long a cached answer stays in Redis before redis deletes it automatically.)
     try:
         redis_client.setex(key, ttl, value)
     except RedisError:

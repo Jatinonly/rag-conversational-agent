@@ -6,8 +6,7 @@ def build_rag_prompt(
 
     recent_history = history[-6:]
     history_text = "\n".join(
-        f"{message['role']}: {message['content']}"
-        for message in recent_history
+        f"{message['role']}: {message['content']}" for message in recent_history
     )
 
     context_parts = []

@@ -1,25 +1,30 @@
-from transformers import pipeline
+import os
 
-MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
+from dotenv import load_dotenv
+from google import genai
 
-generator = pipeline(
-    "text-generation",
-    model=MODEL_NAME,
-)
+load_dotenv()
 
-# Set generation settings once, on the model's config
-gen_config = generator.model.generation_config
-gen_config.max_new_tokens = 200
-gen_config.max_length = None  # fixes the "max_length=20" issue
-gen_config.do_sample = False
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+ANSWER_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+HELPER_MODEL = os.getenv("GEMINI_HELPER_MODEL", "gemini-3.1-flash-lite-preview")
 
 
-def generate_answer(prompt: str) -> str:
-    messages = [{"role": "user", "content": prompt}]
+def generate_answer(prompt, system=None, model=ANSWER_MODEL, max_tokens=2048):
+    config = {"max_output_tokens": max_tokens, "temperature": 0.2}
 
-    result = generator(
-        messages,
-        return_full_text=False,  # only new generated text
+    if system:
+        config["system_instruction"] = system
+
+    response = client.models.generate_content(
+        model=model,
+        contents=prompt,
+        config=config,
     )
 
-    return result[0]["generated_text"].strip()
+    return (response.text or "").strip()
+
+
+def generate_helper(prompt):
+    return generate_answer(prompt, model=HELPER_MODEL, max_tokens=1024)

@@ -1,5 +1,4 @@
-from llm import generate_answer
-
+from llm import generate_helper
 
 def rewrite_query(question: str) -> str:
     prompt = f"""
@@ -15,4 +14,4 @@ User question:
 Search query:
 """
 
-    return generate_answer(prompt).strip()
+    return generate_helper(prompt).strip()

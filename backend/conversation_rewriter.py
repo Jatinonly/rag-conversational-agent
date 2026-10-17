@@ -1,5 +1,4 @@
-from llm import generate_answer
-
+from llm import generate_helper
 
 def rewrite_conversation_query(
     question: str,
@@ -34,4 +33,4 @@ Latest question:
 Standalone search query:
 """
 
-    return generate_answer(prompt).strip()
+    return generate_helper(prompt).strip()

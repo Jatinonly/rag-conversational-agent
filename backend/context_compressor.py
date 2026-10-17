@@ -1,9 +1,8 @@
-from llm import generate_answer
-
+from llm import generate_helper
 
 def compress_context(question: str, text: str) -> str:
-  
-  prompt = f"""
+
+    prompt = f"""
 Extract only the information from the document text that is relevant
 to answering the user's question.
 
@@ -20,4 +19,4 @@ Document text:
 Relevant information:
 """
 
-  return generate_answer(prompt).strip()
+    return generate_helper(prompt).strip()

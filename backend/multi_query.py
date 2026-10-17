@@ -1,5 +1,4 @@
-from llm import generate_answer
-
+from llm import generate_helper
 
 def generate_queries(question: str, num_queries: int = 3) -> list[str]:
     prompt = f"""
@@ -19,7 +18,7 @@ User question:
 Search queries:
 """
 
-    response = generate_answer(prompt)
+    response = generate_helper(prompt)
 
     queries = [
         line.strip("- ").strip() for line in response.splitlines() if line.strip()
